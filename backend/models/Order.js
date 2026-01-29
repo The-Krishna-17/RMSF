@@ -17,11 +17,23 @@ const orderSchema = new mongoose.Schema(
       },
     ],
     totalAmount: { type: Number, required: true },
+    sessionId: { type: String, required: true },
+    paymentStatus: {
+      type: String,
+      enum: ["Pending", "Paid"],
+      default: "Pending",
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["Online", "Cash"],
+      default: "Online",
+    },
     status: {
       type: String,
-      enum: ["Received", "Preparing", "Ready", "Served"],
+      enum: ["Received", "Preparing", "Ready", "Served", "Completed"],
       default: "Received",
     },
+    estimatedTime: { type: Number }, // in minutes
   },
   { timestamps: true },
 );
