@@ -1,13 +1,16 @@
 const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
 
+const asyncHandler = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30d" });
 };
 
 // @desc    Register a new admin
 // @route   POST /api/admin/signup
-exports.registerAdmin = async (req, res) => {
+exports.registerAdmin = asyncHandler(async (req, res) => {
   const {
     restaurantName,
     panNumber,
@@ -22,7 +25,8 @@ exports.registerAdmin = async (req, res) => {
   const adminExists = await Admin.findOne({ email });
 
   if (adminExists) {
-    return res.status(400).json({ message: "Admin already exists" });
+    res.status(400);
+    throw new Error("Admin already exists with this email");
   }
 
   const admin = await Admin.create({
@@ -44,13 +48,14 @@ exports.registerAdmin = async (req, res) => {
       token: generateToken(admin._id),
     });
   } else {
-    res.status(400).json({ message: "Invalid admin data" });
+    res.status(400);
+    throw new Error("Invalid admin data received");
   }
-};
+});
 
 // @desc    Auth admin & get token
 // @route   POST /api/admin/login
-exports.loginAdmin = async (req, res) => {
+exports.loginAdmin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   const admin = await Admin.findOne({ email });
@@ -63,25 +68,27 @@ exports.loginAdmin = async (req, res) => {
       token: generateToken(admin._id),
     });
   } else {
-    res.status(401).json({ message: "Invalid email or password" });
+    res.status(401);
+    throw new Error("Invalid email or password");
   }
-};
+});
 
 // @desc    Get admin profile
 // @route   GET /api/admin/profile
-exports.getAdminProfile = async (req, res) => {
+exports.getAdminProfile = asyncHandler(async (req, res) => {
   const admin = await Admin.findById(req.admin._id);
 
   if (admin) {
     res.json(admin);
   } else {
-    res.status(404).json({ message: "Admin not found" });
+    res.status(404);
+    throw new Error("Admin not found");
   }
-};
+});
 
 // @desc    Update admin profile
 // @route   PUT /api/admin/profile/update
-exports.updateAdminProfile = async (req, res) => {
+exports.updateAdminProfile = asyncHandler(async (req, res) => {
   const admin = await Admin.findById(req.admin._id);
 
   if (admin) {
@@ -106,6 +113,7 @@ exports.updateAdminProfile = async (req, res) => {
       token: generateToken(updatedAdmin._id),
     });
   } else {
-    res.status(404).json({ message: "Admin not found" });
+    res.status(404);
+    throw new Error("Admin not found");
   }
-};
+});
