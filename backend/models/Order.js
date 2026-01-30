@@ -30,8 +30,8 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Received", "Preparing", "Ready", "Served", "Completed"],
-      default: "Received",
+      enum: ["Pending", "Cooking", "Ready", "Served", "Cancelled"],
+      default: "Pending",
     },
     estimatedTime: { type: Number }, // in minutes
   },
