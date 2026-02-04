@@ -34,6 +34,7 @@ const orderSchema = new mongoose.Schema(
       default: "Pending",
     },
     estimatedTime: { type: Number }, // in minutes
+    cancellationReason: { type: String }, // Reason for cancellation
   },
   { timestamps: true },
 );

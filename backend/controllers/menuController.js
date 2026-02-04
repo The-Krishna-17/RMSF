@@ -1,8 +1,9 @@
 const MenuItem = require("../models/MenuItem");
+const asyncHandler = require("../middleware/asyncHandler");
 
 // @desc    Add a menu item
 // @route   POST /api/menu
-exports.addMenuItem = async (req, res) => {
+exports.addMenuItem = asyncHandler(async (req, res) => {
   const { name, price, image, category, description, vegType } = req.body;
 
   const menuItem = new MenuItem({
@@ -17,18 +18,18 @@ exports.addMenuItem = async (req, res) => {
 
   const createdItem = await menuItem.save();
   res.status(201).json(createdItem);
-};
+});
 
 // @desc    Get all menu items
 // @route   GET /api/menu
-exports.getMenuItems = async (req, res) => {
+exports.getMenuItems = asyncHandler(async (req, res) => {
   const items = await MenuItem.find({ adminId: req.admin._id });
   res.json(items);
-};
+});
 
 // @desc    Update a menu item
 // @route   PUT /api/menu/:id
-exports.updateMenuItem = async (req, res) => {
+exports.updateMenuItem = asyncHandler(async (req, res) => {
   const { name, price, image, category } = req.body;
 
   const menuItem = await MenuItem.findById(req.params.id);
@@ -50,11 +51,11 @@ exports.updateMenuItem = async (req, res) => {
   } else {
     res.status(404).json({ message: "Menu item not found" });
   }
-};
+});
 
 // @desc    Delete a menu item
 // @route   DELETE /api/menu/:id
-exports.deleteMenuItem = async (req, res) => {
+exports.deleteMenuItem = asyncHandler(async (req, res) => {
   const menuItem = await MenuItem.findById(req.params.id);
 
   if (menuItem) {
@@ -67,20 +68,20 @@ exports.deleteMenuItem = async (req, res) => {
   } else {
     res.status(404).json({ message: "Menu item not found" });
   }
-};
+});
 // @desc    Get all menu items for public view
 // @route   GET /api/menu/public/:adminId
-exports.getPublicMenu = async (req, res) => {
+exports.getPublicMenu = asyncHandler(async (req, res) => {
   try {
     const items = await MenuItem.find({ adminId: req.params.adminId });
     res.json(items);
   } catch (error) {
     res.status(500).json({ message: "Error fetching menu" });
   }
-};
+});
 // @desc    Bulk add menu items
 // @route   POST /api/menu/bulk
-exports.bulkAddMenuItems = async (req, res) => {
+exports.bulkAddMenuItems = asyncHandler(async (req, res) => {
   try {
     const { items } = req.body;
 
@@ -101,11 +102,11 @@ exports.bulkAddMenuItems = async (req, res) => {
       .status(500)
       .json({ message: "Error importing menu items", error: error.message });
   }
-};
+});
 
 // @desc    Bulk add menu items from catalog
 // @route   POST /api/menu/bulk-add
-exports.bulkAddFromCatalog = async (req, res) => {
+exports.bulkAddFromCatalog = asyncHandler(async (req, res) => {
   try {
     const { items } = req.body;
 
@@ -129,4 +130,4 @@ exports.bulkAddFromCatalog = async (req, res) => {
     console.error("Bulk Add Error:", error);
     res.status(500).json({ message: "Error adding items to menu" });
   }
-};
+});

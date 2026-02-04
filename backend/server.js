@@ -1,5 +1,6 @@
 const express = require("express");
 const dotenv = require("dotenv");
+dotenv.config();
 const cors = require("cors");
 const connectDB = require("./config/db");
 const adminRoutes = require("./routes/admin");
@@ -8,7 +9,6 @@ const qrRoutes = require("./routes/qr");
 const orderRoutes = require("./routes/order");
 const foodCatalogRoutes = require("./routes/foodCatalog");
 
-dotenv.config();
 connectDB();
 
 const http = require("http");

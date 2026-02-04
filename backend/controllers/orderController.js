@@ -1,34 +1,5 @@
 const Order = require("../models/Order");
-
-const asyncHandler = (fn) => (req, res, next) =>
-  Promise.resolve(fn(req, res, next)).catch(next);
-
-// @desc    Create a new order
-// @route   POST /api/order
-exports.createOrder = asyncHandler(async (req, res) => {
-  const { adminId, tableNumber, items, totalAmount, sessionId } = req.body;
-
-  if (!items || items.length === 0) {
-    res.status(400);
-    throw new Error("No items in order");
-  }
-
-  if (!sessionId) {
-    res.status(400);
-    throw new Error("Session ID is required");
-  }
-
-  const order = new Order({
-    adminId,
-    tableNumber,
-    items,
-    totalAmount,
-    sessionId,
-  });
-
-  const createdOrder = await order.save();
-  res.status(201).json(createdOrder);
-});
+const asyncHandler = require("../middleware/asyncHandler");
 
 // @desc    Get all orders for admin
 // @route   GET /api/order
@@ -40,11 +11,11 @@ exports.getOrders = asyncHandler(async (req, res) => {
 });
 
 // @desc    Get orders for a specific session
-// @route   GET /api/order/session/:sessionId
 exports.getSessionOrders = asyncHandler(async (req, res) => {
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const orders = await Order.find({
     sessionId: req.params.sessionId,
-    paymentStatus: "Pending",
+    createdAt: { $gte: twentyFourHoursAgo },
   }).sort({ createdAt: -1 });
   res.json(orders);
 });
@@ -70,11 +41,15 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
     if (estimatedTime !== undefined) {
       order.estimatedTime = estimatedTime;
     }
+    if (req.body.cancellationReason) {
+      order.cancellationReason = req.body.cancellationReason;
+    }
     const updatedOrder = await order.save();
 
-    // Emit socket event to the specific session room
+    // Emit socket event to the specific session room AND globally for admin
     if (req.io) {
       req.io.to(order.sessionId).emit("orderStatusUpdated", updatedOrder);
+      req.io.emit("orderStatusUpdated", updatedOrder); // Notify admin dashboard
     }
 
     res.json(updatedOrder);
@@ -116,18 +91,23 @@ exports.processPayment = asyncHandler(async (req, res) => {
     { $set: updates },
   );
 
-  // Notify admin via socket (implementation depends on admin room, for now basic emit)
+  // Notify admin via socket (and session)
   if (req.io) {
-    // Just emit to session so they know request is sent
-    req.io.to(sessionId).emit("paymentRequested", { paymentMethod });
+    // 1. Notify Session (Client)
+    req.io.to(sessionId).emit("paymentUpdated", {
+      sessionId,
+      status: updates.paymentStatus || "Pending",
+      paymentMethod: updates.paymentMethod,
+    });
 
-    // Also, we should probably emit an update event so the frontend refreshes the order list status immediately
-    // The frontend listens for "orderStatusUpdated" but processPayment updates MANY orders.
-    // We'll emit a generic "sessionPaymentUpdated" or simply let the user refresh/poll?
-    // Better: Emit paymentUpdate to the session room
-    req.io
-      .to(sessionId)
-      .emit("paymentUpdated", { sessionId, status: updates.paymentStatus });
+    // 2. Notify Admin (Dashboard) - We need to emit the FULL updated order objects
+    // Fetch the fresh updated orders to send to admin
+    const freshOrders = await Order.find({ sessionId });
+
+    freshOrders.forEach((order) => {
+      // Emit update for every order in the session (simplest to ensure consistency)
+      req.io.emit("orderStatusUpdated", order);
+    });
   }
 
   res.json({
@@ -136,4 +116,37 @@ exports.processPayment = asyncHandler(async (req, res) => {
         ? "Cash payment requested"
         : "Payment successful",
   });
+});
+
+// @desc    Create a new order
+// @route   POST /api/order
+exports.createOrder = asyncHandler(async (req, res) => {
+  const { adminId, tableNumber, items, totalAmount, sessionId } = req.body;
+
+  if (!items || items.length === 0) {
+    res.status(400);
+    throw new Error("No items in order");
+  }
+
+  if (!sessionId) {
+    res.status(400);
+    throw new Error("Session ID is required");
+  }
+
+  const order = new Order({
+    adminId,
+    tableNumber,
+    items,
+    totalAmount,
+    sessionId,
+  });
+
+  const createdOrder = await order.save();
+
+  if (req.io) {
+    req.io.to(sessionId).emit("new_order", createdOrder);
+    req.io.emit("admin_new_order", createdOrder); // Optional: Notify admin dashboard globally if viewing all orders
+  }
+
+  res.status(201).json(createdOrder);
 });

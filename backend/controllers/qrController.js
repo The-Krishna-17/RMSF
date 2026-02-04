@@ -1,9 +1,10 @@
 const QRCode = require("qrcode");
 const QRCodeModel = require("../models/QRCode");
+const asyncHandler = require("../middleware/asyncHandler");
 
 // @desc    Generate unique QR codes per table/cabin
 // @route   POST /api/qr/generate
-exports.generateQR = async (req, res) => {
+exports.generateQR = asyncHandler(async (req, res) => {
   const { tableNumber, type } = req.body;
 
   // Check if QR already exists for this table
@@ -36,18 +37,18 @@ exports.generateQR = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Error generating QR code" });
   }
-};
+});
 
 // @desc    Get all QR codes
 // @route   GET /api/qr
-exports.getQRCodes = async (req, res) => {
+exports.getQRCodes = asyncHandler(async (req, res) => {
   const qrs = await QRCodeModel.find({ adminId: req.admin._id });
   res.json(qrs);
-};
+});
 
 // @desc    Delete a QR code
 // @route   DELETE /api/qr/:id
-exports.deleteQR = async (req, res) => {
+exports.deleteQR = asyncHandler(async (req, res) => {
   try {
     const qr = await QRCodeModel.findOneAndDelete({
       _id: req.params.id,
@@ -62,4 +63,4 @@ exports.deleteQR = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Error deleting QR code" });
   }
-};
+});
